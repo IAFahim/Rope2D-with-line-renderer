@@ -1,16 +1,16 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Rope : MonoBehaviour
+public class Rope2D : MonoBehaviour
 {
     public Transform player;
 
     public LineRenderer rope;
     public LayerMask collMask;
 
-    public List<Vector3> ropePositions { get; set; } = new List<Vector3>();
+    [field: SerializeReference] public List<Vector2> RopePositions { get; set; } = new();
 
-    private void Awake() => AddPosToRope(Vector3.zero);
+    private void Awake() => AddPosToRope(transform.position);
 
     private void Update()
     {
@@ -18,38 +18,51 @@ public class Rope : MonoBehaviour
         LastSegmentGoToPlayerPos();
 
         DetectCollisionEnter();
-        if (ropePositions.Count > 2) DetectCollisionExits();        
+        if (RopePositions.Count > 2) DetectCollisionExits();
     }
 
     private void DetectCollisionEnter()
     {
-        RaycastHit hit;
-        if (Physics.Linecast(player.position, rope.GetPosition(ropePositions.Count - 2), out hit, collMask))
+        var position = player.position;
+        RaycastHit2D hit = Physics2D.Raycast(position,
+            (Vector2)rope.GetPosition(RopePositions.Count - 2) - (Vector2)position,
+            Vector2.Distance(position, rope.GetPosition(RopePositions.Count - 2)), collMask);
+        if (hit.collider != null)
         {
-            ropePositions.RemoveAt(ropePositions.Count - 1);
+            RopePositions.RemoveAt(RopePositions.Count - 1);
             AddPosToRope(hit.point);
         }
     }
 
     private void DetectCollisionExits()
     {
-        RaycastHit hit;
-        if (!Physics.Linecast(player.position, rope.GetPosition(ropePositions.Count - 3), out hit, collMask))
+        var position = player.position;
+        RaycastHit2D hit = Physics2D.Raycast(position,
+            (Vector2)rope.GetPosition(RopePositions.Count - 3) - (Vector2)position,
+            Vector2.Distance(position, rope.GetPosition(RopePositions.Count - 3)), collMask);
+        if (hit.collider == null)
         {
-            ropePositions.RemoveAt(ropePositions.Count - 2);
+            RopePositions.RemoveAt(RopePositions.Count - 2);
         }
     }
 
-    private void AddPosToRope(Vector3 _pos)
+    private void AddPosToRope(Vector2 _pos)
     {
-        ropePositions.Add(_pos);
-        ropePositions.Add(player.position); //Always the last pos must be the player
+        RopePositions.Add(_pos);
+        RopePositions.Add(player.position); //Always the last pos must be the player
     }
 
     private void UpdateRopePositions()
     {
-        rope.positionCount = ropePositions.Count;
-        rope.SetPositions(ropePositions.ToArray());
+        rope.positionCount = RopePositions.Count;
+        var v3Array = new Vector3[RopePositions.Count];
+        var v2S = RopePositions.ToArray();
+        for (var i = 0; i < v2S.Length; i++)
+        {
+            v3Array[i] = v2S[i];
+        }
+
+        rope.SetPositions(v3Array);
     }
 
     private void LastSegmentGoToPlayerPos() => rope.SetPosition(rope.positionCount - 1, player.position);
